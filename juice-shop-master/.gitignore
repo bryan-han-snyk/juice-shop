@@ -1,0 +1,73 @@
+# App
+node_modules/
+juiceshop.sqlite
+order_*.pdf
+app/
+!frontend/src/app
+uploads/complaints/*.*
+!uploads/complaints/.gitkeep
+ftp/legal.md
+i18n/*.json
+i18n/*.invalid
+!frontend/src/assets/i18n/*.json
+!data/static/i18n/*.json
+data/chatbot/*.*
+!data/chatbot/.gitkeep
+
+# TF
+secret.auto.tfvars
+**/.terraform/*
+*.tfstate.*
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+tfplan.binary
+
+# Build
+.nyc_output/
+.sass-cache/
+build/
+cache/
+dist/
+logs/
+vagrant/.vagrant/
+*.orig
+*.out
+*.log
+JSON
+JSON.map
+frontend/src/**/*.js
+
+# IDEs
+.idea/
+.vscode/
+out/
+*.eml
+*.iml
+*.iws
+*.swp
+
+# Branch ghpages
+assets/
+!frontend/src/assets/
+
+# Custom configuration files
+config/*.yml
+!config/addo.yml
+!config/bodgeit.yml
+!config/ctf.yml
+!config/fbctf.yml
+!config/default.yml
+!config/juicebox.yml
+!config/quiet.yml
+!config/test.yml
+!config/7ms.yml
+!config/mozilla.yml
+!config/unsafe.yml
+!config/tutorial.yml
+!config/oss.yml
+kubeconfig_*
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/snyk_rules.instructions.md
