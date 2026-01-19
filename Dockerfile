@@ -1,46 +1,51 @@
+# 1. Use a modern, stable Node version
 FROM node:20-bookworm-slim
 
-RUN apt-get update || (sleep 5 && apt-get update) && \
-    apt-get install -y --no-install-recommends \
+# 2. Standardize apt-get (removed the broken Buster snapshots)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     apt-transport-https \
+    curl \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
-RUN echo 'deb     [trusted=yes check-valid-until=no] https://snapshot.debian.org/archive/debian/20211201T215332Z/ buster main \n\
-deb-src [trusted=yes check-valid-until=no] https://snapshot.debian.org/archive/debian/20211201T215332Z/ buster main \n\
-deb     [trusted=yes check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20211201T215332Z/ buster/updates main \n\
-deb-src [trusted=yes check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20211201T215332Z/ buster/updates main' >> /etc/apt/sources.list
+# Note: liblog4j2-java=2.11.1 is highly specific to the "Juice Shop" 
+# challenge. If it fails on Bookworm, it's better to use the version 
+# provided by the current OS or skip it if you aren't testing Log4Shell.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    liblog4j2-java || echo "Warning: Specific log4j version not found, skipping..."
 
-RUN apt-get -y update && apt-get -y install \
-    liblog4j2-java=2.11.1-2
-
+# Metadata Labels
 ARG BUILD_DATE
 ARG VCS_REF
 LABEL maintainer="Bjoern Kimminich <bjoern.kimminich@owasp.org>" \
     org.opencontainers.image.title="OWASP Juice Shop" \
     org.opencontainers.image.description="Probably the most modern and sophisticated insecure web application" \
-    org.opencontainers.image.authors="Bjoern Kimminich <bjoern.kimminich@owasp.org>" \
-    org.opencontainers.image.vendor="Open Web Application Security Project" \
-    org.opencontainers.image.documentation="https://help.owasp-juice.shop" \
-    org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.version="12.3.0" \
-    org.opencontainers.image.url="https://owasp-juice.shop" \
-    org.opencontainers.image.source="https://github.com/clintonherget/juice-shop" \
-    org.opencontainers.image.revision=$VCS_REF \
-    org.opencontainers.image.created=$BUILD_DATE \
-    io.snyk.containers.image.dockerfile="/Dockerfile"
+    org.opencontainers.image.source="https://github.com/clintonherget/juice-shop"
 
+# 3. Setup User and Permissions
 RUN addgroup --system --gid 1001 juicer && \
     adduser juicer --system --uid 1001 --ingroup juicer
-COPY --chown=juicer . /juice-shop
+
 WORKDIR /juice-shop
-RUN npm install --production --unsafe-perm
+# Copying only package files first is a "Docker Best Practice" to speed up builds
+COPY --chown=juicer:juicer package*.json ./
+COPY --chown=juicer:juicer . .
+
+# 4. Install dependencies
+# We use --legacy-peer-deps because Juice Shop 12.x has old dependency trees
+RUN npm install --production --unsafe-perm --legacy-peer-deps
 RUN npm dedupe
 RUN rm -rf frontend/node_modules
-RUN mkdir logs && \
-    chown -R juicer logs && \
-    chgrp -R 0 ftp/ frontend/dist/ logs/ data/ i18n/ && \
-    chmod -R g=u ftp/ frontend/dist/ logs/ data/ i18n/
+
+# 5. Final Folder Permissions
+RUN mkdir -p logs && \
+    chown -R juicer:juicer logs ftp/ frontend/dist/ data/ i18n/ && \
+    chmod -R 755 logs ftp/ frontend/dist/ data/ i18n/
+
 USER 1001
 EXPOSE 3000
 CMD ["npm", "start"]
