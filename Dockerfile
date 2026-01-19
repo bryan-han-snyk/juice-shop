@@ -1,4 +1,4 @@
-FROM node:12.18.4-buster
+FROM node:20-bookworm-slim
 
 RUN apt-get update || (sleep 5 && apt-get update) && \
     apt-get install -y --no-install-recommends \
