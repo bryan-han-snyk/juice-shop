@@ -1,50 +1,41 @@
-# 1. Use a modern, stable Node version
-FROM node:20-bookworm-slim
+# 1. Start with your original version
+FROM node:12.18.4-buster
 
-# 2. Standardize apt-get (removed the broken Buster snapshots)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 2. EMERGENCY REPOSITORY FIX
+# We must point to 'archive.debian.org' because 'deb.debian.org' no longer hosts Buster
+RUN sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list && \
+    sed -i 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
+    sed -i '/buster-updates/d' /etc/apt/sources.list
+
+# 3. Install system dependencies
+# We use --allow-check-valid-until because the archive timestamps are "expired"
+RUN apt-get -y -o Acquire::Check-Valid-Until=false update && \
+    apt-get -y install --no-install-recommends \
     ca-certificates \
     apt-transport-https \
-    curl \
-    python3 \
+    python \
     make \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Note: liblog4j2-java=2.11.1 is highly specific to the "Juice Shop" 
-# challenge. If it fails on Bookworm, it's better to use the version 
-# provided by the current OS or skip it if you aren't testing Log4Shell.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    liblog4j2-java || echo "Warning: Specific log4j version not found, skipping..."
-
-# Metadata Labels
-ARG BUILD_DATE
-ARG VCS_REF
-LABEL maintainer="Bjoern Kimminich <bjoern.kimminich@owasp.org>" \
-    org.opencontainers.image.title="OWASP Juice Shop" \
-    org.opencontainers.image.description="Probably the most modern and sophisticated insecure web application" \
-    org.opencontainers.image.version="12.3.0" \
-    org.opencontainers.image.source="https://github.com/clintonherget/juice-shop"
-
-# 3. Setup User and Permissions
+# 4. Setup User
 RUN addgroup --system --gid 1001 juicer && \
     adduser juicer --system --uid 1001 --ingroup juicer
 
 WORKDIR /juice-shop
-# Copying only package files first is a "Docker Best Practice" to speed up builds
-COPY --chown=juicer:juicer package*.json ./
 COPY --chown=juicer:juicer . .
 
-# 4. Install dependencies
-# We use --legacy-peer-deps because Juice Shop 12.x has old dependency trees
-RUN npm install --production --unsafe-perm --legacy-peer-deps
-RUN npm dedupe
-RUN rm -rf frontend/node_modules
+# 5. Install NPM dependencies
+# In Node 12, we don't need --legacy-peer-deps, but we DO need build tools
+RUN npm install --production --unsafe-perm
 
-# 5. Final Folder Permissions
-RUN mkdir -p logs && \
-    chown -R juicer:juicer logs ftp/ frontend/dist/ data/ i18n/ && \
-    chmod -R 755 logs ftp/ frontend/dist/ data/ i18n/
+# 6. Cleanup and Permissions
+RUN npm dedupe && \
+    rm -rf frontend/node_modules && \
+    mkdir -p logs && \
+    chown -R juicer logs && \
+    chgrp -R 0 ftp/ frontend/dist/ logs/ data/ i18n/ && \
+    chmod -R g=u ftp/ frontend/dist/ logs/ data/ i18n/
 
 USER 1001
 EXPOSE 3000
