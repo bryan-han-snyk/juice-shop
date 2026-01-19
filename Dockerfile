@@ -37,8 +37,8 @@ COPY --chown=juicer:juicer . .
 
 # 4. Install dependencies
 # We use --legacy-peer-deps because Juice Shop 12.x has old dependency trees
-RUN npm install --production --unsafe-perm --legacy-peer-deps
-RUN npm dedupe
+RUN sudo npm install --production --unsafe-perm --legacy-peer-deps
+RUN sudo npm dedupe
 RUN rm -rf frontend/node_modules
 
 # 5. Final Folder Permissions
