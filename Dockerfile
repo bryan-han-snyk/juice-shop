@@ -1,6 +1,10 @@
 FROM node:12.18.4-buster
 
-RUN apt-get -y update && apt-get -y install ca-certificates apt-transport-https
+RUN apt-get update || (sleep 5 && apt-get update) && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN echo 'deb     [trusted=yes check-valid-until=no] https://snapshot.debian.org/archive/debian/20211201T215332Z/ buster main \n\
 deb-src [trusted=yes check-valid-until=no] https://snapshot.debian.org/archive/debian/20211201T215332Z/ buster main \n\
