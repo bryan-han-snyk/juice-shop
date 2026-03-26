@@ -5,27 +5,18 @@
 
 const models = require('../models/index')
 const utils = require('../lib/utils')
-const axios = require('axios') // Added for the new vulnerability
 
 module.exports = function searchProducts () {
   return (req, res, next) => {
     const query = req.query.q || ''
-    const externalSource = req.query.source // NEW: User-controlled input
-
-    // VULNERABILITY: Server-Side Request Forgery (SSRF)
-    // Snyk will flag this because 'externalSource' is used directly in an HTTP request
-    if (externalSource) {
-      axios.get(externalSource)
-        .then(response => console.log('Fetched metadata from source'))
-        .catch(err => console.error('Source unreachable'))
-    }
 
     models.Product.findAll({ where: { name: { [models.Sequelize.Op.like]: `%${query}%` } } })
       .then(products => {
         if (products.length > 0) {
           res.json(utils.queryResultToJson(products))
         } else {
-          // EXISTING VULNERABILITY: Reflected XSS
+          // VULNERABILITY: Reflected XSS
+          // The 'query' variable is unescaped and sent back in an HTML-compatible response
           res.status(404).send(`<h1>No results found for: ${query}</h1>`)
         }
       }).catch(error => {
